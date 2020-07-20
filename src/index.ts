@@ -5,35 +5,17 @@ const LCurly = createToken({ name: 'LCurly', pattern: /{{/ });
 const RCurly = createToken({ name: 'RCurly', pattern: /}}/ });
 const Equal = createToken({ name: 'Equal', pattern: /=/ });
 const Pipe = createToken({ name: 'Pipe', pattern: /\|/ });
-const StringLiteral = createToken({
-  name: 'StringLiteral',
-  pattern: /"(:?[^\\"\n\r]+|\\(:?[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"/,
-});
-const NumberLiteral = createToken({
-  name: 'NumberLiteral',
-  pattern: /"123"/,
-});
 const TextType = createToken({
   name: 'TextType',
-  pattern: /[^|{}]+/,
+  pattern: /[^|={}]+/,
 });
-
 const WhiteSpace = createToken({
   name: 'WhiteSpace',
   pattern: /\s+/,
   group: Lexer.SKIPPED,
 });
 
-const AllTokens = [
-  WhiteSpace,
-  NumberLiteral,
-  StringLiteral,
-  RCurly,
-  LCurly,
-  Equal,
-  Pipe,
-  TextType,
-];
+const AllTokens = [WhiteSpace, Equal, RCurly, LCurly, Pipe, TextType];
 
 const DepLexer = new Lexer(AllTokens, {
   // Less position info tracked, reduces verbosity of the playground output.
@@ -47,7 +29,8 @@ Equal.LABEL = "'='";
 Pipe.LABEL = "'|'";
 TextType.LABEL = 'Text';
 
-// ----------------- parser -----------------
+// Reference for the wikitext ENBF spec
+// https://www.mediawiki.org/wiki/Markup_spec/EBNF#Includes
 class DepParser extends CstParser {
   constructor() {
     super(AllTokens, {
@@ -90,19 +73,9 @@ class DepParser extends CstParser {
 const parser = new DepParser();
 
 const parseText = function (text) {
-  console.log('Parsing', text);
   const lexResult = DepLexer.tokenize(text);
-  // setting a new input will RESET the parser instance's state.
   parser.input = lexResult.tokens;
-  // any top level rule may be used as an entry point
   const cst = parser.template();
-
-  // console.dir(cst, {depth: null, colors: true})
-  console.log('lexErrors', lexResult.errors);
-  console.log('parseErrors', parser.errors);
-  console.log('cst', cst);
-  console.dir(cst, { depth: null, colors: true });
-  // console.log('cst.children.part', cst.children.parameter[0]['children'])
 
   return {
     cst: cst,
@@ -111,4 +84,12 @@ const parseText = function (text) {
   };
 };
 
-parseText('{{Template|val1=tes22|anotherval22=test222|anotherother}}');
+export const lex = function (inputText) {
+  const lexingResult = DepLexer.tokenize(inputText);
+
+  if (lexingResult.errors.length > 0) {
+    throw Error('Lexing errors detected');
+  }
+
+  return lexingResult;
+};
