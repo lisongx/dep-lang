@@ -15,7 +15,7 @@ const NumberLiteral = createToken({
 });
 const TextType = createToken({
   name: "TextType",
-  pattern: /[a-zA-Z]+/,
+  pattern: /[^|={}]+/,
 });
 
 const WhiteSpace = createToken({
@@ -111,4 +111,4 @@ const parseText = function (text) {
   };
 };
 
-parseText("{{Template|val=tes|anotherval=test|anotherother}}");
+parseText("{{Template|val1=tes22|anotherval22=test222|anotherother}}");
