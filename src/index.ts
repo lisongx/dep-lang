@@ -73,7 +73,7 @@ class DepParser extends CstParser {
 const parser = new DepParser();
 
 const parseText = function (text) {
-  const lexResult = DepLexer.tokenize(text);
+    const lexResult = DepLexer.tokenize(text);
   parser.input = lexResult.tokens;
   const cst = parser.template();
 
