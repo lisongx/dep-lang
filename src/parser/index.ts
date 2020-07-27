@@ -5,8 +5,8 @@ const LCurly = createToken({ name: 'LCurly', pattern: /{{/ });
 const RCurly = createToken({ name: 'RCurly', pattern: /}}/ });
 const Equal = createToken({ name: 'Equal', pattern: /=/ });
 const Pipe = createToken({ name: 'Pipe', pattern: /\|/ });
-const TextType = createToken({
-  name: 'TextType',
+const Text = createToken({
+  name: 'Text',
   pattern: /[^|={}]+/,
 });
 const WhiteSpace = createToken({
@@ -15,7 +15,7 @@ const WhiteSpace = createToken({
   group: Lexer.SKIPPED,
 });
 
-const AllTokens = [WhiteSpace, Equal, RCurly, LCurly, Pipe, TextType];
+const AllTokens = [WhiteSpace, Equal, RCurly, LCurly, Pipe, Text];
 
 const DepLexer = new Lexer(AllTokens, {
   // Less position info tracked, reduces verbosity of the playground output.
@@ -27,7 +27,7 @@ LCurly.LABEL = "'{{'";
 RCurly.LABEL = "'}}'";
 Equal.LABEL = "'='";
 Pipe.LABEL = "'|'";
-TextType.LABEL = 'Text';
+Text.LABEL = 'Text';
 
 // Reference for the wikitext ENBF spec
 // https://www.mediawiki.org/wiki/Markup_spec/EBNF#Includes
@@ -58,30 +58,69 @@ class DepParser extends CstParser {
   });
 
   private value = this.RULE('value', () => {
-    this.CONSUME(TextType);
+    this.CONSUME(Text);
   });
 
   private title = this.RULE('title', () => {
-    this.CONSUME(TextType);
+    this.CONSUME(Text);
   });
 
   private name = this.RULE('name', () => {
-    this.CONSUME(TextType);
+    this.CONSUME(Text);
   });
 }
 
 const parser = new DepParser();
 
-const parseText = function (text) {
+const BaseTemplateVisitorWithDefaults = parser.getBaseCstVisitorConstructorWithDefaults();
+
+class TemplateVisitor extends BaseTemplateVisitorWithDefaults {
+  constructor() {
+    super();
+    this.validateVisitor();
+  }
+
+  template(ctx) {
+    const parameter = ctx.parameter && ctx.parameter.map((p) => this.visit(p));
+
+    return {
+      name: this.visit(ctx.title).name,
+      parameter: parameter || [],
+    };
+  }
+
+  title(ctx) {
+    return { name: ctx.Text[0].image.trim() };
+  }
+
+  parameter(ctx) {
+    return {
+      type: 'PARAMETER',
+      name: ctx.name && ctx.name[0].children.Text[0].image.trim(),
+      value: ctx.value[0].children.Text[0].image.trim(),
+    };
+  }
+}
+
+const templateVisitor = new TemplateVisitor();
+
+const parseTemplateString = function (text) {
   const lexResult = DepLexer.tokenize(text);
   parser.input = lexResult.tokens;
   const cst = parser.template();
 
-  return {
-    cst: cst,
-    lexErrors: lexResult.errors,
-    parseErrors: parser.errors,
-  };
+  if (parser.errors.length > 0) {
+    throw new Error('sad sad panda, Parsing errors detected');
+  }
+
+  // return {
+  //   cst: cst,
+  //   ast: templateVisitor.visit(cst),
+  //   lexErrors: lexResult.errors,
+  //   parseErrors: parser.errors,
+  // };
+
+  return templateVisitor.visit(cst);
 };
 
 export const lex = function (inputText) {
@@ -93,3 +132,5 @@ export const lex = function (inputText) {
 
   return lexingResult;
 };
+
+export default parseTemplateString;
