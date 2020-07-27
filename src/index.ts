@@ -1,8 +1,8 @@
 import { createToken, Lexer, CstParser } from 'chevrotain';
 
 // ----------------- Lexer -----------------
-const LCurly = createToken({ name: 'LCurly', pattern: /{{/ });
-const RCurly = createToken({ name: 'RCurly', pattern: /}}/ });
+const LCurly = createToken({ name: 'LCurly', pattern: /{/ });
+const RCurly = createToken({ name: 'RCurly', pattern: /}/ });
 const Equal = createToken({ name: 'Equal', pattern: /=/ });
 const Pipe = createToken({ name: 'Pipe', pattern: /\|/ });
 const TextType = createToken({
@@ -23,8 +23,8 @@ const DepLexer = new Lexer(AllTokens, {
 });
 
 // Labels only affect error messages and Diagrams.
-LCurly.LABEL = "'{{'";
-RCurly.LABEL = "'}}'";
+LCurly.LABEL = "'{'";
+RCurly.LABEL = "'}'";
 Equal.LABEL = "'='";
 Pipe.LABEL = "'|'";
 TextType.LABEL = 'Text';
@@ -39,13 +39,32 @@ class DepParser extends CstParser {
     this.performSelfAnalysis();
   }
 
-  public template = this.RULE('template', () => {
+  public body = this.RULE('body', () => {
+    this.OR([
+      { ALT:() => { this.SUBRULE(this.blob) }},
+      { ALT:() => { this.SUBRULE(this.template)}},
+    ])
+  });
+
+  private template = this.RULE('template', () => {
     this.CONSUME(LCurly);
+    this.CONSUME2(LCurly);
     this.SUBRULE(this.title);
     this.MANY(() => {
       this.SUBRULE(this.parameter);
     });
     this.CONSUME(RCurly);
+    this.CONSUME2(RCurly);
+  });
+
+  public blob = this.RULE('blob', () => {
+    this.MANY(() => {
+      this.OR([
+        { ALT:() => { this.CONSUME(TextType)}},
+        { ALT:() => { this.CONSUME(LCurly)}},
+        { ALT:() => { this.CONSUME(RCurly)}},
+      ])
+    });
   });
 
   private parameter = this.RULE('parameter', () => {
@@ -73,9 +92,9 @@ class DepParser extends CstParser {
 const parser = new DepParser();
 
 const parseText = function (text) {
-    const lexResult = DepLexer.tokenize(text);
+  const lexResult = DepLexer.tokenize(text);
   parser.input = lexResult.tokens;
-  const cst = parser.template();
+  const cst = parser.body();
 
   return {
     cst: cst,
@@ -83,6 +102,7 @@ const parseText = function (text) {
     parseErrors: parser.errors,
   };
 };
+
 
 export const lex = function (inputText) {
   const lexingResult = DepLexer.tokenize(inputText);

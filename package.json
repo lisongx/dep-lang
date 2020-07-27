@@ -9,6 +9,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@types/nearley": "^2.11.1",
     "chevrotain": "^7.0.1",
     "moo": "^0.5.1",
     "nearley": "^2.19.5"
